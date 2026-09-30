@@ -5,8 +5,8 @@
   const $ = id => document.getElementById(id);
   let client, ui, user = null, selectedPeriod = null, generation = 0, busy = false, ready = false;
   let refreshPromise = null;
-  const message = text => { $('account-message').textContent = text; };
-  const status = text => { $('sync-status').textContent = text; };
+  const message = text => { text=window.I18n?.t(text)||text;if($('account-message').textContent!==text)$('account-message').textContent = text; };
+  const status = text => { text=window.I18n?.t(text)||text;if($('sync-status').textContent!==text)$('sync-status').textContent = text; };
   function errorText(error) {
     const messages = {
       CONFIRMATION_MISMATCH: '周期名称不一致，删除未执行。',
@@ -65,7 +65,7 @@
     if (!user || busy || (!force && !ui.canRefresh())) return false;
     if (refreshPromise) return refreshPromise;
     const requestGeneration = generation;
-    status('正在同步…');
+    if(force||!ready)status('正在同步…');
     refreshPromise = (async () => {
       try {
         let { data, error } = await client.rpc('read_shared_ledger', {p_period_id:selectedPeriod});
@@ -76,7 +76,7 @@
         if (error) throw error;
         accept(data);
         status('● 团队账本已同步');
-        message('全员共享周期总消费。页面每 20 秒检查更新，也可点击“同步”。');
+        if(force)message('后台自动检查更新，不会刷新整个页面。也可点击“同步”。');
         return true;
       } catch (error) {
         if (requestGeneration !== generation) return false;
@@ -90,8 +90,11 @@
   }
   async function run(name, args) {
     if (!user || !ready) throw Error('请先登录并读取团队账本。');
-    if (busy || refreshPromise) throw Error('正在同步，请稍后再操作。');
     const requestGeneration = generation;
+    if (refreshPromise) await refreshPromise;
+    if (requestGeneration !== generation) throw Error('账号已切换，请检查当前账号。');
+    if (!user || !ready) throw Error('请先登录并读取团队账本。');
+    if (busy) throw Error('正在同步，请稍后再操作。');
     busy = true; status('正在保存到云端…');
     try {
       const {data,error} = await client.rpc(name,args);
@@ -142,6 +145,7 @@
       setInterval(() => { if (!document.hidden) refresh(); }, 20000);
       window.addEventListener('focus', () => refresh());
       window.addEventListener('online', () => refresh());
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
     } catch {
       status('云端连接失败');
       message('请检查网络及 config.js 中的项目地址和 sb_publishable_ 公开密钥，再刷新页面。');

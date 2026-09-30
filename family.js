@@ -4,6 +4,7 @@
   const t=text=>window.I18n.t(text);
   let state=null,people=[],page='overview',generation=0,photo='',profileDirty=false,editing=null,mode='create',busy=false;
   const esc=L.escape;
+  const setHTML=(id,html)=>window.LiveDOM.html($(id),html);
   const safePhoto=value=>typeof value==='string'&&value.length<=90000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
   const avatar=p=>safePhoto(p?.avatar)?`<img src="${p.avatar}" alt="">`:`<span>${esc(Array.from(p?.name||'?')[0])}</span>`;
   const feedback=(id,message)=>$(id).textContent=t(message);
@@ -24,12 +25,12 @@
     const query=$('people-search').value.trim().toLowerCase();
     const rows=people.filter(p=>(p.name+' '+(p.email||'')).toLowerCase().includes(query));
     $('member-count').textContent=people.filter(p=>p.active).length;
-    $('members').innerHTML=rows.map(p=>`<article class="person-card ${p.active?'':'inactive'}"><div class="person-heading"><div class="photo-avatar">${avatar(p)}</div><div class="person-identity"><h3 data-user-content>${esc(p.name)}</h3><div class="person-badges"><span>${t(p.role==='admin'?'管理员':'普通会员')}</span>${p.id===state.me.id?`<span>${t('我')}</span>`:''}${!p.active?`<span>${t('已移除')}</span>`:''}</div></div></div>${state.me.role==='admin'?`<p class="person-email" data-user-content>${esc(p.email||'')}</p>`:''}<div class="person-stat"><span>${t('本期累计')}</span><strong>${p.cents===null?'—':L.money(p.cents)}</strong><small>${p.count===null?t('本期明细仅本人可见'):t('共 {n} 笔消费').replace('{n}',p.count)}</small></div>${state.me.role==='admin'?`<div class="person-actions">${p.active?`<button data-role="${esc(p.id)}">${t(p.role==='admin'?'改为普通会员':'设为管理员')}</button>`:''}${p.role!=='admin'?`<button data-manage="${esc(p.id)}">${t('管理')}</button><button data-active="${esc(p.id)}" class="${p.active?'danger-text':''}">${t(p.active?'移除会员':'恢复会员')}</button>`:''}</div>`:''}</article>`).join('')||`<p class="empty">${t('没有找到成员')}</p>`;
+    setHTML('members',rows.map(p=>`<article data-live-key="person-${esc(p.id)}" class="person-card ${p.active?'':'inactive'}"><div class="person-heading"><div class="photo-avatar">${avatar(p)}</div><div class="person-identity"><h3 data-user-content>${esc(p.name)}</h3><div class="person-badges"><span>${t(p.role==='admin'?'管理员':'普通会员')}</span>${p.id===state.me.id?`<span>${t('我')}</span>`:''}${!p.active?`<span>${t('已移除')}</span>`:''}</div></div></div>${state.me.role==='admin'?`<p class="person-email" data-user-content>${esc(p.email||'')}</p>`:''}<div class="person-stat"><span>${t('本期累计')}</span><strong>${p.cents===null?'—':L.money(p.cents)}</strong><small>${p.count===null?t('本期明细仅本人可见'):t('共 {n} 笔消费').replace('{n}',p.count)}</small></div>${state.me.role==='admin'?`<div class="person-actions">${p.active?`<button data-role="${esc(p.id)}">${t(p.role==='admin'?'改为普通会员':'设为管理员')}</button>`:''}${p.role!=='admin'?`<button data-manage="${esc(p.id)}">${t('管理')}</button><button data-active="${esc(p.id)}" class="${p.active?'danger-text':''}">${t(p.active?'移除会员':'恢复会员')}</button>`:''}</div>`:''}</article>`).join('')||`<p class="empty">${t('没有找到成员')}</p>`);
     const me=people.find(p=>p.id===state.me.id);
     if(me){
-      $('account-trigger').innerHTML=avatar(me);$('account-heading').textContent=me.name;
-      if(!profileDirty){photo=me.avatar||'';$('profile-name').value=me.name;$('profile-preview').innerHTML=avatar(me);}
-      $('hero-avatars').innerHTML=people.filter(p=>p.count>0).slice(0,3).map(p=>`<span>${avatar(p)}</span>`).join('');
+      setHTML('account-trigger',avatar(me));$('account-heading').textContent=me.name;
+      if(!profileDirty){photo=me.avatar||'';$('profile-name').value=me.name;setHTML('profile-preview',avatar(me));}
+      setHTML('hero-avatars',people.filter(p=>p.count>0).slice(0,3).map(p=>`<span>${avatar(p)}</span>`).join(''));
     }
   }
   async function load(data){
@@ -41,7 +42,7 @@
       const result=await cloud.request('read_ledger_people',{p_period_id:data.selectedPeriod});
       if(current!==generation)return;
       people=result;feedback('people-message','');renderPeople();
-    }catch(error){if(current===generation){feedback('people-message',error.message);$('members').innerHTML='';}}
+    }catch(error){if(current===generation){feedback('people-message',error.message);}}
   }
   function clear(){
     generation++;state=null;people=[];profileDirty=false;photo='';busy=false;
@@ -51,7 +52,7 @@
   }
   $('people-search').oninput=renderPeople;
   $('profile-name').oninput=()=>{profileDirty=true;};
-  $('remove-avatar').onclick=()=>{photo='';profileDirty=true;$('profile-photo').value='';$('profile-preview').innerHTML=avatar({name:$('profile-name').value});};
+  $('remove-avatar').onclick=()=>{photo='';profileDirty=true;$('profile-photo').value='';setHTML('profile-preview',avatar({name:$('profile-name').value}));};
   $('profile-photo').onchange=async()=>{
     const file=$('profile-photo').files[0];if(!file)return;
     const current=generation;
@@ -63,7 +64,7 @@
       const size=Math.min(bitmap.width,bitmap.height);context.drawImage(bitmap,(bitmap.width-size)/2,(bitmap.height-size)/2,size,size,0,0,256,256);bitmap.close();
       const encoded=canvas.toDataURL('image/jpeg',.78);if(!safePhoto(encoded))throw Error('size');
       if(current!==generation)return;
-      photo=encoded;profileDirty=true;$('profile-preview').innerHTML=avatar({avatar:photo});feedback('profile-message','头像已预览，点击保存个人资料后同步。');
+      photo=encoded;profileDirty=true;setHTML('profile-preview',avatar({avatar:photo}));feedback('profile-message','头像已预览，点击保存个人资料后同步。');
     }catch{feedback('profile-message','图片读取失败，请换一张图片。');}finally{$('profile-save').disabled=false;}
   };
   $('profile-form').onsubmit=async event=>{

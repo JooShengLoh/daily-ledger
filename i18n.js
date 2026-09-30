@@ -1,6 +1,7 @@
 /* UI translations only. Member names, notes and expense descriptions are never translated. */
 (() => {
   const en={
+    '后台自动检查更新，不会刷新整个页面。也可点击“同步”。':'Updates happen in the background without reloading the page. You can also sync manually.',
     '所选周期全员总消费':'Selected period spending','我在此周期的消费':'My spending in this period','新密码':'New password','初始密码':'Initial password','重设密码（选填）':'New password (optional)',
     '密码不能为空，两次输入必须相同。':'Enter a password and make sure both entries match.','密码不能为空。':'Password cannot be empty.','密码不符合 Supabase 项目的规则，请检查后台密码设置。':'The password does not meet your Supabase project rules. Check the Auth password settings.',
     '彻底删除周期':'Delete period permanently','永久删除':'Delete permanently','取消':'Cancel',

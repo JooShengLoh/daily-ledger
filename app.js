@@ -3,6 +3,8 @@
   const $=id=>document.getElementById(id), L=window.Ledger, cloud=window.ledgerCloud;
   let accountReturnFocus=null;
   let state=null, editing=null, draftId=crypto.randomUUID(), saving=false, dirty=false, range='all', toastTimer, periodDraft=null;
+  const setHTML=(id,html)=>window.LiveDOM.html($(id),html);
+  let dataFingerprint='';
   const period=()=>state?.periods.find(p=>p.id===state.selectedPeriod)||null;
   const today=()=>state?.today||L.malaysiaDate();
   const isAdmin=()=>state?.me.role==='admin';
@@ -65,16 +67,16 @@
     $('filter-count').textContent=filterCount;$('filter-count').classList.toggle('hidden',!filterCount);$('clear-filters').classList.toggle('hidden',!filterCount);
     $('filtered-total').textContent='筛选合计 '+L.money(records.reduce((sum,e)=>sum+e.cents,0));
     const totals=new Map();records.forEach(e=>totals.set(e.date,(totals.get(e.date)||0)+e.cents));let lastDate='';
-    $('record-list').innerHTML=records.length?records.map(e=>{
-      let heading='';if(lastDate!==e.date){lastDate=e.date;heading=`<div class="day-heading"><span>${L.escape(e.date)}</span><span>${L.money(totals.get(e.date))}</span></div>`;}
+    setHTML('record-list',records.length?records.map(e=>{
+      let heading='';if(lastDate!==e.date){lastDate=e.date;heading=`<div class="day-heading" data-live-key="day-${L.escape(e.date)}"><span>${L.escape(e.date)}</span><span>${L.money(totals.get(e.date))}</span></div>`;}
       const edit=state&&L.canEdit(e,state.me,p,today());
-      return heading+`<div class="record"><div class="category-icon ${categoryVisuals[e.category][1]}" title="${L.escape(e.category)}">${icon(categoryVisuals[e.category][0])}</div><div class="record-main"><div class="record-title">${L.escape(e.title)}</div><div class="record-meta"><b>${L.escape(e.memberName)}</b> · ${L.escape(e.time)}${e.note?' · '+L.escape(e.note):''}</div></div><div class="record-amount">${L.money(e.cents)}</div>${edit?`<details class="row-menu"><summary aria-label="操作 ${L.escape(e.title)}">···</summary><div class="row-actions"><button data-edit="${L.escape(e.id)}">编辑记录</button><button class="delete" data-delete="${L.escape(e.id)}">删除记录</button></div></details>`:''}</div>`;
-    }).join(''):'<div class="empty"><b>还没有符合条件的消费</b>周期内记下今天的第一笔，或调整筛选条件。</div>';
+      return heading+`<div class="record" data-live-key="record-${L.escape(e.id)}"><div class="category-icon ${categoryVisuals[e.category][1]}" title="${L.escape(e.category)}">${icon(categoryVisuals[e.category][0])}</div><div class="record-main"><div class="record-title">${L.escape(e.title)}</div><div class="record-meta"><b>${L.escape(e.memberName)}</b> · ${L.escape(e.time)}${e.note?' · '+L.escape(e.note):''}</div></div><div class="record-amount">${L.money(e.cents)}</div>${edit?`<details class="row-menu"><summary aria-label="操作 ${L.escape(e.title)}">···</summary><div class="row-actions"><button data-edit="${L.escape(e.id)}">编辑记录</button><button class="delete" data-delete="${L.escape(e.id)}">删除记录</button></div></details>`:''}</div>`;
+    }).join(''):'<div class="empty"><b>还没有符合条件的消费</b>周期内记下今天的第一笔，或调整筛选条件。</div>');
   }
   function render(){
     if(!state)return;
     const p=period();$('role-badge').textContent=isAdmin()?'管理员':'普通会员';$('admin-panel').classList.toggle('hidden',!isAdmin());
-    $('period-select').innerHTML=state.periods.length?state.periods.map(item=>`<option value="${L.escape(item.id)}">${L.escape(item.title)} · ${window.I18n.t(statusLabels[item.status])}</option>`).join(''):'<option value="">暂无周期</option>';
+    setHTML('period-select',state.periods.length?state.periods.map(item=>`<option value="${L.escape(item.id)}">${L.escape(item.title)} · ${window.I18n.t(statusLabels[item.status])}</option>`).join(''):'<option value="">暂无周期</option>');
     $('period-select').value=state.selectedPeriod||'';$('period-select').disabled=!state.periods.length;
     $('period-heading').textContent=p?.title||'暂无记账周期';$('period-status').textContent=p?statusLabels[p.status]:'等待开启';
     $('period-status').className='status-pill '+(p?.status||'');
@@ -96,11 +98,11 @@
     $('contributors').textContent=dashboard.summary.contributors+' 人';$('total-count').textContent='共 '+dashboard.summary.count+' 笔消费';
     const canSeeAll=!!p&&(p.showDetails||isAdmin());$('member-summary').classList.remove('hidden');
     $('member-count').textContent=state.members.length;
-    $('hero-avatars').innerHTML=state.members.filter(m=>state.selectedPeriod===dashboard.periodId&&m.count>0).slice(0,3).map(m=>'<span>'+initial(m.name)+'</span>').join('');
+    setHTML('hero-avatars',state.members.filter(m=>state.selectedPeriod===dashboard.periodId&&m.count>0).slice(0,3).map(m=>'<span>'+initial(m.name)+'</span>').join(''));
     $('hero-contributors').textContent=dashboard.summary.contributors?dashboard.summary.contributors+' 位伙伴 · '+dashboard.summary.count+' 笔日常':dashboard.periodId?'等你记下第一笔':'历史消费可在明细页查看';
     document.querySelectorAll('[data-nav="members"]').forEach(button=>button.disabled=false);
     const selectedMember=$('filter-member').value;
-    $('filter-member').innerHTML='<option value="">'+(canSeeAll?'全部成员':'我的记录')+'</option>'+state.members.map(m=>`<option value="${L.escape(m.id)}">${L.escape(m.name)}</option>`).join('');
+    setHTML('filter-member','<option value="">'+(canSeeAll?'全部成员':'我的记录')+'</option>'+state.members.map(m=>`<option value="${L.escape(m.id)}">${L.escape(m.name)}</option>`).join(''));
     if(state.members.some(m=>m.id===selectedMember))$('filter-member').value=selectedMember;
     $('filter-member').disabled=!canSeeAll;
     $('visibility-hint').textContent=p&&!canSeeAll?'本期只展示自己的明细；所选周期总额仍包含所有成员。':'';
@@ -108,6 +110,7 @@
   }
   function validate(data){return !!data?.me&&['admin','member'].includes(data.me.role)&&Array.isArray(data.periods)&&Array.isArray(data.entries)&&data.entries.every(e=>L.validEntry(e)&&typeof e.userId==='string'&&typeof e.memberName==='string'&&Number.isInteger(e.version))&&Array.isArray(data.members)&&Number.isSafeInteger(data.summary?.totalCents)&&/^\d{4}-\d{2}-\d{2}$/.test(data.today);}
   function load(data){
+    const fingerprint=JSON.stringify(data);if(fingerprint===dataFingerprint){window.Family?.load(data);return;}dataFingerprint=fingerprint;
     const changed=!state||state.selectedPeriod!==data.selectedPeriod;state=data;document.body.classList.add('signed-in');
     if(changed){resetForm();range='all';$('search').value='';$('filter-member').value='';$('filter-category').value='';$('custom-range').classList.add('hidden');document.querySelectorAll('[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period==='all'));$('start').value=(period()?.startDate||today())+'T00:00';$('end').value=(period()?.endDate||today())+'T23:59';}
     render();
@@ -215,7 +218,7 @@
   window.addEventListener('languagechange',render);
   mountEntry();resetForm();seedPeriod();$('today-label').textContent=today()+' · 马来西亚时间';
   cloud.init({validate,load,canRefresh:()=>!saving,clear:()=>{
-    state=null;$('delete-period-dialog').close();window.Family?.clear();closeEntry();closeAccount();document.body.classList.remove('signed-in');clearTimeout(toastTimer);$('toast').classList.add('hidden');$('record-list').innerHTML='';$('members').innerHTML='';
+    state=null;dataFingerprint='';$('delete-period-dialog').close();window.Family?.clear();closeEntry();closeAccount();document.body.classList.remove('signed-in');clearTimeout(toastTimer);$('toast').classList.add('hidden');setHTML('record-list','');window.LiveDOM.html($('members'),'');
     $('admin-panel').classList.add('hidden');$('period-form').reset();periodDraft=null;resetForm();seedPeriod();
     $('record-filters').classList.remove('expanded');$('filters-toggle').setAttribute('aria-expanded','false');$('total').textContent='RM 0.00';$('my-total').textContent='RM 0.00';$('contributors').textContent='0 人';
   }});
