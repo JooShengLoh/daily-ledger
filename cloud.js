@@ -9,6 +9,10 @@
   const status = text => { $('sync-status').textContent = text; };
   function errorText(error) {
     const messages = {
+      LAST_ADMIN: '至少需要保留一位管理员，不能取消最后一位管理员。',
+      RESTORE_MEMBER_FIRST: '请先恢复该会员，再设为管理员。',
+      INVALID_ROLE: '无效的账号角色。',
+      PERIOD_HAS_RECORDS: '这个周期有消费历史，不能删除。可关闭周期保留账目。',
       INVALID_PROFILE: '昵称或头像无效，请检查后重试。',
       ADMIN_PROTECTED: '不能修改管理员账号。',
       MEMBER_NOT_FOUND: '找不到该会员，请重新同步。',
@@ -62,7 +66,10 @@
     status('正在同步…');
     refreshPromise = (async () => {
       try {
-        const { data, error } = await client.rpc('read_shared_ledger', {p_period_id:selectedPeriod});
+        let { data, error } = await client.rpc('read_shared_ledger', {p_period_id:selectedPeriod});
+        if (error?.message?.includes('PERIOD_NOT_FOUND') && requestGeneration === generation) {
+          ({data,error}=await client.rpc('read_shared_ledger',{p_period_id:null}));
+        }
         if (requestGeneration !== generation) return false;
         if (error) throw error;
         accept(data);

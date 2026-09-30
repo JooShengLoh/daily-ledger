@@ -24,12 +24,12 @@
     const query=$('people-search').value.trim().toLowerCase();
     const rows=people.filter(p=>(p.name+' '+(p.email||'')).toLowerCase().includes(query));
     $('member-count').textContent=people.filter(p=>p.active).length;
-    $('members').innerHTML=rows.map(p=>`<article class="person-card ${p.active?'':'inactive'}"><div class="person-heading"><div class="photo-avatar">${avatar(p)}</div><div class="person-identity"><h3 data-user-content>${esc(p.name)}</h3><div class="person-badges"><span>${t(p.role==='admin'?'管理员':'普通会员')}</span>${p.id===state.me.id?`<span>${t('我')}</span>`:''}${!p.active?`<span>${t('已移除')}</span>`:''}</div></div></div>${state.me.role==='admin'?`<p class="person-email" data-user-content>${esc(p.email||'')}</p>`:''}<div class="person-stat"><span>${t('本期累计')}</span><strong>${p.cents===null?'—':L.money(p.cents)}</strong><small>${p.count===null?t('本期明细仅本人可见'):t('共 {n} 笔消费').replace('{n}',p.count)}</small></div>${state.me.role==='admin'&&p.role!=='admin'?`<div class="person-actions"><button data-manage="${esc(p.id)}">${t('管理')}</button><button data-active="${esc(p.id)}" class="${p.active?'danger-text':''}">${t(p.active?'移除会员':'恢复会员')}</button></div>`:''}</article>`).join('')||`<p class="empty">${t('没有找到成员')}</p>`;
+    $('members').innerHTML=rows.map(p=>`<article class="person-card ${p.active?'':'inactive'}"><div class="person-heading"><div class="photo-avatar">${avatar(p)}</div><div class="person-identity"><h3 data-user-content>${esc(p.name)}</h3><div class="person-badges"><span>${t(p.role==='admin'?'管理员':'普通会员')}</span>${p.id===state.me.id?`<span>${t('我')}</span>`:''}${!p.active?`<span>${t('已移除')}</span>`:''}</div></div></div>${state.me.role==='admin'?`<p class="person-email" data-user-content>${esc(p.email||'')}</p>`:''}<div class="person-stat"><span>${t('本期累计')}</span><strong>${p.cents===null?'—':L.money(p.cents)}</strong><small>${p.count===null?t('本期明细仅本人可见'):t('共 {n} 笔消费').replace('{n}',p.count)}</small></div>${state.me.role==='admin'?`<div class="person-actions">${p.active?`<button data-role="${esc(p.id)}">${t(p.role==='admin'?'改为普通会员':'设为管理员')}</button>`:''}${p.role!=='admin'?`<button data-manage="${esc(p.id)}">${t('管理')}</button><button data-active="${esc(p.id)}" class="${p.active?'danger-text':''}">${t(p.active?'移除会员':'恢复会员')}</button>`:''}</div>`:''}</article>`).join('')||`<p class="empty">${t('没有找到成员')}</p>`;
     const me=people.find(p=>p.id===state.me.id);
     if(me){
       $('account-trigger').innerHTML=avatar(me);$('account-heading').textContent=me.name;
       if(!profileDirty){photo=me.avatar||'';$('profile-name').value=me.name;$('profile-preview').innerHTML=avatar(me);}
-      $('hero-avatars').innerHTML=people.filter(p=>p.count>0).slice(0,3).map(p=>`<span>${avatar(p)}</span>`).join('');
+      $('hero-avatars').innerHTML=people.filter(p=>state.selectedPeriod===state.dashboard?.periodId&&p.count>0).slice(0,3).map(p=>`<span>${avatar(p)}</span>`).join('');
     }
   }
   async function load(data){
@@ -86,7 +86,16 @@
   $('members').onclick=async event=>{
     if(busy||state?.me.role!=='admin')return;
     const button=event.target.closest('button');if(!button)return;
-    const person=people.find(p=>p.id===(button.dataset.manage||button.dataset.active));if(!person)return;
+    const person=people.find(p=>p.id===(button.dataset.manage||button.dataset.active||button.dataset.role));if(!person)return;
+    if(button.dataset.role){
+      const role=person.role==='admin'?'member':'admin';
+      const prompt=role==='admin'?'将此会员设为管理员？对方将可以管理会员、重设会员密码、管理周期和修改消费。':'将此管理员改为普通会员？对方会失去管理员权限，系统会保留至少一位管理员。';
+      if(!window.I18n.confirm(prompt))return;
+      busy=true;button.disabled=true;
+      try{await cloud.request('set_ledger_member_role',{p_user_id:person.id,p_role:role});await cloud.refresh(true);feedback('people-message','角色已更新');}
+      catch(error){feedback('people-message',error.message);}finally{busy=false;button.disabled=false;}
+      return;
+    }
     if(button.dataset.manage){openMember(person,'edit');return;}
     const message=person.active?'移除后，该会员不能再使用账本，历史消费会保留。确定移除？':'恢复后，该会员可以再次登录使用账本。确定恢复？';
     if(!window.I18n.confirm(message))return;

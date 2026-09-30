@@ -1,6 +1,18 @@
 /* UI translations only. Member names, notes and expense descriptions are never translated. */
 (() => {
   const en={
+    '当前周期全员总消费':'Current period spending','我当前的消费':'My current spending','目前没有进行中的周期':'No active period right now','历史消费可在明细页查看':'View past spending on the Expenses page','所选周期总额':'Selected period total','我的消费':'My spending','消费笔数':'Number of expenses',
+    '本期只展示自己的明细；所选周期总额仍包含所有成员。':'Only your own details are shown. The selected period total still includes everyone.',
+    '改为普通会员':'Make member','设为管理员':'Make admin','角色已更新':'Role updated',
+    '将此会员设为管理员？对方将可以管理会员、重设会员密码、管理周期和修改消费。':'Make this member an admin? They can manage members, reset member passwords, manage periods and edit expenses.',
+    '将此管理员改为普通会员？对方会失去管理员权限，系统会保留至少一位管理员。':'Make this admin a regular member? They will lose admin access. At least one admin must remain.',
+    '至少需要保留一位管理员，不能取消最后一位管理员。':'At least one admin must remain. The last admin cannot be demoted.',
+    '请先恢复该会员，再设为管理员。':'Restore this member before making them an admin.',
+    '无效的账号角色。':'Invalid account role.',
+    '删除空周期':'Delete empty period',
+    '确定删除这个空周期？删除后无法恢复；包含消费历史的周期不会被删除。':'Delete this empty period permanently? Periods with any expense history will be kept.',
+    '空周期已删除':'Empty period deleted',
+    '这个周期有消费历史，不能删除。可关闭周期保留账目。':'This period has expense history and cannot be deleted. Close it to preserve the records.',
     '昵称或头像无效，请检查后重试。':'Invalid name or photo. Please check and retry.','找不到该会员，请重新同步。':'Member not found. Please sync again.',
     '罗家记':'罗家记','一起花 · 一起记':'Little moments, together','账本概览':'Home','消费明细':'Expenses','团队成员':'Members','我们的家人':'Our family','概览':'Home','明细':'Expenses','成员':'Members','我的':'Me','记一笔':'Add','记一笔消费':'Add expense',
     '一起记，好好过':'A little note, a better day','。':'.','每一笔小日常，都值得好好记录。':'A home for every little everyday expense.','欢迎回到罗家记':'Welcome to Luo Family Ledger','登录你的账号，和大家一起记下今天。':'Sign in and record today, together.','使用管理员分配的账号登录。':'Sign in with the account your administrator created.','邮箱':'Email','密码':'Password','你的账号邮箱':'Your email address','登录账本':'Sign in','同步':'Sync','修改密码':'Change password','退出登录':'Sign out','新密码（至少 12 位）':'New password (12+ characters)','再次输入新密码':'Confirm new password','保存新密码':'Save password','首次使用？查看开通说明':'First time? Setup guide',

@@ -1,3 +1,5 @@
+> 最终整合版本请优先阅读 [FINAL-UPDATE.md](FINAL-UPDATE.md)。已有项目只执行 upgrade-final.sql，然后覆盖网站文件。
+
 # 开通团队共用账本
 
 > 新版：浅蓝主题、头像昵称、中英文、明暗模式、独立页面与网页会员管理。已有线上版本请先按 [UPDATE-V3.md](UPDATE-V3.md) 更新数据库、部署账号服务和上传新版文件。
@@ -12,7 +14,7 @@
 
 ## 2. 初始化共享数据库
 
-进入项目 **SQL Editor**，粘贴并执行 [supabase/schema.sql](supabase/schema.sql) 全部内容。接着执行 [supabase/upgrade-v3.sql](supabase/upgrade-v3.sql) 启用昵称、头像和会员管理。
+进入项目 **SQL Editor**，粘贴并执行 [supabase/schema.sql](supabase/schema.sql) 全部内容。接着执行 [supabase/upgrade-final.sql](supabase/upgrade-final.sql)，一次启用头像、会员管理、多管理员、删除空周期与首页当前统计。
 
 新建成员、周期和逐笔消费三张表，启用访问限制，安装 RPC，并为以后创建的 Auth 用户自动建立普通会员资料。已有 Auth 用户也会加入会员表，角色默认为普通会员；若已有多人不应属于此团队，请在发放网站前按后文停用。
 
@@ -24,7 +26,9 @@
 
 这是一个封闭团队，新用户通过你创建账号后才加入。只隐藏注册按钮不足以阻止注册，必须关闭服务端设置。[官方配置说明](https://supabase.com/docs/guides/auth/general-configuration)。
 
-## 4. 建立账号并指定唯一管理员
+合并升级包含多管理员功能。可在网站成员页提升或降级角色，最后一位管理员不能降级。
+
+## 4. 建立账号并指定首位管理员
 
 1. 在 **Authentication → Users → Add user / Create new user** 建立你自己的邮箱账号，设置初始密码，并完成邮箱确认（或选 Auto confirm user）。
 2. 打开 [supabase/set-admin.sql](supabase/set-admin.sql)，把 `admin_email` 改成你刚创建的邮箱。

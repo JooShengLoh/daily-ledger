@@ -18,8 +18,12 @@
     closeEntry();
     $('entry-dialog').append($('entry-panel'));
   }
-  function openEntry(){
+  async function openEntry(){
     if(!state)return;
+    if(document.body.dataset.page==='overview'&&state.dashboard.periodId&&state.selectedPeriod!==state.dashboard.periodId){
+      if((dirty||editing)&&!window.I18n.confirm('切换周期会清除未保存的表单，继续？'))return;
+      try{await cloud.selectPeriod(state.dashboard.periodId);}catch(error){toast(error.message);return;}
+    }
     closeAccount();
     if(true){
       if(!$('entry-dialog').open)$('entry-dialog').showModal();
@@ -86,22 +90,27 @@
     $('period-progress-fill').style.width=progress+'%';document.querySelector('.period-progress').setAttribute('aria-valuenow',progress);
     $('period-rules').textContent=p?`${p.allowBackdate?'可补记周期内已经过去的日期':'会员只可记录当天消费'} · ${p.showDetails?'全员可看全部明细':'会员只看总额与自己的明细'} · 到期后锁定`:'历史周期和总消费会保留。';
     $('close-period').classList.toggle('hidden',!isAdmin()||!p||p.closed||p.status==='ended');
-    $('total').textContent=L.money(state.summary.totalCents);$('my-total').textContent=L.money(state.summary.myCents);
-    $('contributors').textContent=state.summary.contributors+' 人';$('total-count').textContent='共 '+state.summary.count+' 笔消费';
+    $('delete-period').classList.toggle('hidden',!isAdmin()||!p);
+    const dashboard=state.dashboard;
+    $('total').textContent=L.money(dashboard.summary.totalCents);$('my-total').textContent=L.money(dashboard.summary.myCents);
+    $('dashboard-period').textContent=dashboard.periodId?dashboard.title:window.I18n.t('目前没有进行中的周期');
+    $('history-total').textContent=L.money(state.summary.totalCents);
+    $('history-mine').textContent=L.money(state.summary.myCents);
+    $('history-count').textContent=state.summary.count;
+    $('contributors').textContent=dashboard.summary.contributors+' 人';$('total-count').textContent='共 '+dashboard.summary.count+' 笔消费';
     const canSeeAll=!!p&&(p.showDetails||isAdmin());$('member-summary').classList.remove('hidden');
     $('member-count').textContent=state.members.length;
-    $('members').innerHTML=state.members.map(m=>'<div class="member-row"><div class="member-top"><span class="member-avatar" aria-hidden="true">'+initial(m.name)+'</span><span class="member-name">'+L.escape(m.name)+(m.id===state.me.id?' <small>我</small>':'')+'</span></div><div class="member-bottom"><strong>'+L.money(m.cents)+'</strong><small>'+m.count+' 笔</small></div></div>').join('')||'<div class="empty">本期尚未有人记账。</div>';
-    $('hero-avatars').innerHTML=state.members.filter(m=>m.count>0).slice(0,3).map(m=>'<span>'+initial(m.name)+'</span>').join('');
-    $('hero-contributors').textContent=state.summary.contributors?state.summary.contributors+' 位伙伴 · '+state.summary.count+' 笔日常':'等你记下第一笔';
+    $('hero-avatars').innerHTML=state.members.filter(m=>state.selectedPeriod===dashboard.periodId&&m.count>0).slice(0,3).map(m=>'<span>'+initial(m.name)+'</span>').join('');
+    $('hero-contributors').textContent=dashboard.summary.contributors?dashboard.summary.contributors+' 位伙伴 · '+dashboard.summary.count+' 笔日常':dashboard.periodId?'等你记下第一笔':'历史消费可在明细页查看';
     document.querySelectorAll('[data-nav="members"]').forEach(button=>button.disabled=false);
     const selectedMember=$('filter-member').value;
     $('filter-member').innerHTML='<option value="">'+(canSeeAll?'全部成员':'我的记录')+'</option>'+state.members.map(m=>`<option value="${L.escape(m.id)}">${L.escape(m.name)}</option>`).join('');
     if(state.members.some(m=>m.id===selectedMember))$('filter-member').value=selectedMember;
     $('filter-member').disabled=!canSeeAll;
-    $('visibility-hint').textContent=p&&!canSeeAll?'本期只展示自己的明细；上方“本期全员总消费”仍包含所有成员。':'';
+    $('visibility-hint').textContent=p&&!canSeeAll?'本期只展示自己的明细；所选周期总额仍包含所有成员。':'';
     $('today-label').textContent=today()+' · 马来西亚时间';updatePermissions();renderRecords();window.Family?.load(state);
   }
-  function validate(data){return !!data?.me&&['admin','member'].includes(data.me.role)&&Array.isArray(data.periods)&&Array.isArray(data.entries)&&data.entries.every(e=>L.validEntry(e)&&typeof e.userId==='string'&&typeof e.memberName==='string'&&Number.isInteger(e.version))&&Array.isArray(data.members)&&Number.isSafeInteger(data.summary?.totalCents)&&/^\d{4}-\d{2}-\d{2}$/.test(data.today);}
+  function validate(data){return !!data?.me&&Number.isSafeInteger(data.dashboard?.summary?.totalCents)&&['admin','member'].includes(data.me.role)&&Array.isArray(data.periods)&&Array.isArray(data.entries)&&data.entries.every(e=>L.validEntry(e)&&typeof e.userId==='string'&&typeof e.memberName==='string'&&Number.isInteger(e.version))&&Array.isArray(data.members)&&Number.isSafeInteger(data.summary?.totalCents)&&/^\d{4}-\d{2}-\d{2}$/.test(data.today);}
   function load(data){
     const changed=!state||state.selectedPeriod!==data.selectedPeriod;state=data;document.body.classList.add('signed-in');
     if(changed){resetForm();range='all';$('search').value='';$('filter-member').value='';$('filter-category').value='';$('custom-range').classList.add('hidden');document.querySelectorAll('[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period==='all'));$('start').value=(period()?.startDate||today())+'T00:00';$('end').value=(period()?.endDate||today())+'T23:59';}
@@ -151,6 +160,11 @@
     if(await mutate('create_ledger_period',{...args,p_id:periodDraft.id})){periodDraft=null;$('period-form').reset();seedPeriod();$('admin-panel').open=false;toast('新周期已创建，所有成员都能看到。');}
   };
   $('close-period').onclick=async()=>{const p=period();if(!p||!isAdmin()||!window.I18n.confirm(`结束「${p.title}」？所有人将无法再添加、修改或删除本期消费，历史记录仍可查看。`))return;if(await mutate('close_ledger_period',{p_period_id:p.id})){resetForm();render();toast('周期已结束，历史记录已保留。');}};
+  $('delete-period').onclick=async()=>{
+    const p=period();if(!p||!isAdmin())return;
+    if(!window.I18n.confirm('确定删除这个空周期？删除后无法恢复；包含消费历史的周期不会被删除。'))return;
+    if(await mutate('delete_empty_ledger_period',{p_period_id:p.id})){resetForm();render();document.querySelector('.period-more').open=false;toast('空周期已删除');}
+  };
   function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   $('backup').onclick=()=>{if(!state)return;download('罗家记-团队周期-'+today()+'.json',JSON.stringify({format:'shared-ledger-export-v2',exportedAt:new Date().toISOString(),period:period(),summary:state.summary,entries:state.entries,members:state.members},null,2),'application/json');};
   $('export-csv').onclick=()=>{const cell=value=>'"'+String(value).replace(/^[=+@\-\t\r]/,"'$&").replaceAll('"','""')+'"';const data=[['周期','成员','日期','时间','内容','分类','金额 MYR','备注'],...rows().map(e=>[period()?.title||'',e.memberName,e.date,e.time,e.title,e.category,(e.cents/100).toFixed(2),e.note])];download('罗家记-团队消费-'+today()+'.csv','\ufeff'+data.map(row=>row.map(cell).join(',')).join('\r\n'),'text/csv;charset=utf-8');};
