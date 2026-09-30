@@ -1,6 +1,12 @@
 /* UI translations only. Member names, notes and expense descriptions are never translated. */
 (() => {
   const en={
+    '彻底删除周期':'Delete period permanently','永久删除':'Delete permanently','取消':'Cancel',
+    '将删除 {count} 笔消费，合计 {total}。':'Delete {count} expenses totalling {total}.',
+    '此周期、全部消费和已删除记录的历史都会永久删除，无法恢复。':'This period, all expenses and previously deleted records will be permanently erased. This cannot be undone.',
+    '输入完整周期名称确认':'Type the full period name to confirm','请输入完全相同的周期名称。':'Enter the exact period name.',
+    '周期和全部消费已永久删除':'Period and all expenses permanently deleted','周期名称不一致，删除未执行。':'The period name does not match. Nothing was deleted.',
+    '周期消费有更新，删除未执行。请关闭确认框，重新点击删除以核对最新金额。':'Expenses changed. Nothing was deleted. Close this dialog and reopen it to review the latest total.',
     '当前周期全员总消费':'Current period spending','我当前的消费':'My current spending','目前没有进行中的周期':'No active period right now','历史消费可在明细页查看':'View past spending on the Expenses page','所选周期总额':'Selected period total','我的消费':'My spending','消费笔数':'Number of expenses',
     '本期只展示自己的明细；所选周期总额仍包含所有成员。':'Only your own details are shown. The selected period total still includes everyone.',
     '改为普通会员':'Make member','设为管理员':'Make admin','角色已更新':'Role updated',

@@ -9,6 +9,8 @@
   const status = text => { $('sync-status').textContent = text; };
   function errorText(error) {
     const messages = {
+      CONFIRMATION_MISMATCH: '周期名称不一致，删除未执行。',
+      PERIOD_CHANGED: '周期消费有更新，删除未执行。请关闭确认框，重新点击删除以核对最新金额。',
       LAST_ADMIN: '至少需要保留一位管理员，不能取消最后一位管理员。',
       RESTORE_MEMBER_FIRST: '请先恢复该会员，再设为管理员。',
       INVALID_ROLE: '无效的账号角色。',
@@ -99,7 +101,7 @@
     } catch(error) {
       if(requestGeneration === generation) {
         status('保存未确认 · 请重试');message(errorText(error));busy=false;
-        if (/ENTRY_CONFLICT|ENTRY_DELETED|PERIOD_LOCKED|TODAY_ONLY|MEMBER_REQUIRED/.test(error?.message||'')) await refresh(true);
+        if (/PERIOD_CHANGED|ENTRY_CONFLICT|ENTRY_DELETED|PERIOD_LOCKED|TODAY_ONLY|MEMBER_REQUIRED/.test(error?.message||'')) await refresh(true);
       }
       throw Error(errorText(error));
     } finally { busy=false; }

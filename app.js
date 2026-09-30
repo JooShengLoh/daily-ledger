@@ -160,11 +160,28 @@
     if(await mutate('create_ledger_period',{...args,p_id:periodDraft.id})){periodDraft=null;$('period-form').reset();seedPeriod();$('admin-panel').open=false;toast('新周期已创建，所有成员都能看到。');}
   };
   $('close-period').onclick=async()=>{const p=period();if(!p||!isAdmin()||!window.I18n.confirm(`结束「${p.title}」？所有人将无法再添加、修改或删除本期消费，历史记录仍可查看。`))return;if(await mutate('close_ledger_period',{p_period_id:p.id})){resetForm();render();toast('周期已结束，历史记录已保留。');}};
+  let deleteTarget=null;
   $('delete-period').onclick=async()=>{
+    if(saving||!isAdmin())return;
+    if(!await cloud.refresh(true)){toast('读取周期失败，请重试。');return;}
     const p=period();if(!p||!isAdmin())return;
-    if(!window.I18n.confirm('确定删除这个空周期？删除后无法恢复；包含消费历史的周期不会被删除。'))return;
-    if(await mutate('delete_empty_ledger_period',{p_period_id:p.id})){resetForm();render();document.querySelector('.period-more').open=false;toast('空周期已删除');}
+    deleteTarget={id:p.id,title:p.title,count:state.summary.count,total:state.summary.totalCents};
+    $('delete-period-name').textContent=p.title;
+    $('delete-period-impact').textContent=window.I18n.t('将删除 {count} 笔消费，合计 {total}。').replace('{count}',deleteTarget.count).replace('{total}',L.money(deleteTarget.total));
+    $('delete-period-form').reset();$('delete-period-dialog').showModal();$('delete-period-confirmation').focus();
   };
+  $('cancel-delete-period').onclick=()=>{if(!saving)$('delete-period-dialog').close();};
+  $('delete-period-dialog').addEventListener('cancel',event=>{if(saving)event.preventDefault();});
+  $('delete-period-confirmation').oninput=()=>$('delete-period-confirmation').setCustomValidity('');
+  $('delete-period-form').onsubmit=async event=>{
+    event.preventDefault();if(saving||!deleteTarget||!isAdmin())return;
+    if($('delete-period-confirmation').value!==deleteTarget.title){$('delete-period-confirmation').setCustomValidity(window.I18n.t('请输入完全相同的周期名称。'));$('delete-period-confirmation').reportValidity();return;}
+    $('confirm-delete-period').disabled=true;$('delete-period-dialog').append($('toast'));
+    const ok=await mutate('delete_ledger_period',{p_period_id:deleteTarget.id,p_confirmation:$('delete-period-confirmation').value,p_expected_count:deleteTarget.count,p_expected_total:deleteTarget.total});
+    $('confirm-delete-period').disabled=false;
+    if(ok){$('delete-period-dialog').close();document.body.append($('toast'));deleteTarget=null;resetForm();render();document.querySelector('.period-more').open=false;toast('周期和全部消费已永久删除');}
+  };
+  $('delete-period-dialog').addEventListener('close',()=>document.body.append($('toast')));
   function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   $('backup').onclick=()=>{if(!state)return;download('罗家记-团队周期-'+today()+'.json',JSON.stringify({format:'shared-ledger-export-v2',exportedAt:new Date().toISOString(),period:period(),summary:state.summary,entries:state.entries,members:state.members},null,2),'application/json');};
   $('export-csv').onclick=()=>{const cell=value=>'"'+String(value).replace(/^[=+@\-\t\r]/,"'$&").replaceAll('"','""')+'"';const data=[['周期','成员','日期','时间','内容','分类','金额 MYR','备注'],...rows().map(e=>[period()?.title||'',e.memberName,e.date,e.time,e.title,e.category,(e.cents/100).toFixed(2),e.note])];download('罗家记-团队消费-'+today()+'.csv','\ufeff'+data.map(row=>row.map(cell).join(',')).join('\r\n'),'text/csv;charset=utf-8');};
@@ -202,7 +219,7 @@
   window.addEventListener('languagechange',render);
   mountEntry();resetForm();seedPeriod();$('today-label').textContent=today()+' · 马来西亚时间';
   cloud.init({validate,load,canRefresh:()=>!saving,clear:()=>{
-    state=null;window.Family?.clear();closeEntry();closeAccount();document.body.classList.remove('signed-in');clearTimeout(toastTimer);$('toast').classList.add('hidden');$('record-list').innerHTML='';$('members').innerHTML='';
+    state=null;$('delete-period-dialog').close();window.Family?.clear();closeEntry();closeAccount();document.body.classList.remove('signed-in');clearTimeout(toastTimer);$('toast').classList.add('hidden');$('record-list').innerHTML='';$('members').innerHTML='';
     $('admin-panel').classList.add('hidden');$('period-form').reset();periodDraft=null;resetForm();seedPeriod();
     $('record-filters').classList.remove('expanded');$('filters-toggle').setAttribute('aria-expanded','false');$('total').textContent='RM 0.00';$('my-total').textContent='RM 0.00';$('contributors').textContent='0 人';
   }});

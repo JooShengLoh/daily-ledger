@@ -1,3 +1,5 @@
+> v3.5.0 已支持彻底删除任何周期及全部消费。请使用 FINAL-UPDATE.md 与最新版 upgrade-final.sql，旧版“只删空周期”说明不再适用。
+
 > 最终整合版本请优先阅读 [FINAL-UPDATE.md](FINAL-UPDATE.md)。已有项目只执行 upgrade-final.sql，然后覆盖网站文件。
 
 # 开通团队共用账本
