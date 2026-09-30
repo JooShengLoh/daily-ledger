@@ -16,31 +16,17 @@
   }
   function mountEntry(){
     closeEntry();
-    if(mobileQuery.matches)$('entry-dialog').append($('entry-panel'));
-    else $('workspace').prepend($('entry-panel'));
+    $('entry-dialog').append($('entry-panel'));
   }
   function openEntry(){
     if(!state)return;
     closeAccount();
-    if(mobileQuery.matches){
+    if(true){
       if(!$('entry-dialog').open)$('entry-dialog').showModal();
       $('entry-dialog').append($('toast'));document.body.classList.add('sheet-open');
     }else $('entry-panel').scrollIntoView({behavior:'smooth',block:'center'});
   }
-  function syncNavigation(){
-    if(!state)return;
-    let current=document.body.classList.contains('account-open')?'account':'overview';
-    if(current!=='account'){
-      const threshold=Math.min(innerHeight*.33,160);
-      const records=$('records-panel').getBoundingClientRect();
-      const members=$('member-summary').getBoundingClientRect();
-      if(records.top<=threshold&&records.bottom>threshold)current='records';
-      if(!$('member-summary').classList.contains('hidden')&&members.top<=threshold&&members.bottom>threshold)current='members';
-      if(mobileQuery.matches&&document.documentElement.scrollHeight-innerHeight-scrollY<8&&members.top<innerHeight*.65&&!$('member-summary').classList.contains('hidden'))current='members';
-      if(scrollY<80)current='overview';
-    }
-    document.querySelectorAll('[data-nav]').forEach(button=>button.classList.toggle('active',button.dataset.nav===current));
-  }
+  function syncNavigation(){window.Family?.syncNavigation();}
   function openAccount(){
     if(!state){$('account-panel').scrollIntoView({behavior:'smooth'});return;}
     accountReturnFocus=document.activeElement;$('account-panel').setAttribute('role','dialog');$('account-panel').setAttribute('aria-modal','true');$('account-panel').setAttribute('aria-labelledby','account-heading');
@@ -48,7 +34,7 @@
   }
   function closeAccount(){const wasOpen=document.body.classList.contains('account-open');document.body.classList.remove('account-open');$('account-trigger').setAttribute('aria-expanded','false');$('account-panel').removeAttribute('role');$('account-panel').removeAttribute('aria-modal');if(wasOpen&&accountReturnFocus?.isConnected)accountReturnFocus.focus({preventScroll:true});syncNavigation();}
   const statusLabels={active:'进行中',upcoming:'未开始',ended:'已到期',closed:'已关闭'};
-  function toast(text){$('toast').textContent=text;$('toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),5500);}
+  function toast(text){$('toast').textContent=window.I18n.t(text);$('toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),5500);}
   function updateCategories(){document.querySelectorAll('[data-category]').forEach(button=>button.setAttribute('aria-pressed',button.dataset.category===$('category').value));}
   function resetForm(){
     editing=null;dirty=false;draftId=crypto.randomUUID();$('expense-form').reset();$('date').value=today();
@@ -88,7 +74,7 @@
   function render(){
     if(!state)return;
     const p=period();$('role-badge').textContent=isAdmin()?'管理员':'普通会员';$('admin-panel').classList.toggle('hidden',!isAdmin());
-    $('period-select').innerHTML=state.periods.length?state.periods.map(item=>`<option value="${L.escape(item.id)}">${L.escape(item.title)} · ${statusLabels[item.status]}</option>`).join(''):'<option value="">暂无周期</option>';
+    $('period-select').innerHTML=state.periods.length?state.periods.map(item=>`<option value="${L.escape(item.id)}">${L.escape(item.title)} · ${window.I18n.t(statusLabels[item.status])}</option>`).join(''):'<option value="">暂无周期</option>';
     $('period-select').value=state.selectedPeriod||'';$('period-select').disabled=!state.periods.length;
     $('period-heading').textContent=p?.title||'暂无记账周期';$('period-status').textContent=p?statusLabels[p.status]:'等待开启';
     $('period-status').className='status-pill '+(p?.status||'');
@@ -102,18 +88,18 @@
     $('close-period').classList.toggle('hidden',!isAdmin()||!p||p.closed||p.status==='ended');
     $('total').textContent=L.money(state.summary.totalCents);$('my-total').textContent=L.money(state.summary.myCents);
     $('contributors').textContent=state.summary.contributors+' 人';$('total-count').textContent='共 '+state.summary.count+' 笔消费';
-    const canSeeAll=!!p&&(p.showDetails||isAdmin());$('member-summary').classList.toggle('hidden',!canSeeAll);
+    const canSeeAll=!!p&&(p.showDetails||isAdmin());$('member-summary').classList.remove('hidden');
     $('member-count').textContent=state.members.length;
     $('members').innerHTML=state.members.map(m=>'<div class="member-row"><div class="member-top"><span class="member-avatar" aria-hidden="true">'+initial(m.name)+'</span><span class="member-name">'+L.escape(m.name)+(m.id===state.me.id?' <small>我</small>':'')+'</span></div><div class="member-bottom"><strong>'+L.money(m.cents)+'</strong><small>'+m.count+' 笔</small></div></div>').join('')||'<div class="empty">本期尚未有人记账。</div>';
     $('hero-avatars').innerHTML=state.members.filter(m=>m.count>0).slice(0,3).map(m=>'<span>'+initial(m.name)+'</span>').join('');
     $('hero-contributors').textContent=state.summary.contributors?state.summary.contributors+' 位伙伴 · '+state.summary.count+' 笔日常':'等你记下第一笔';
-    document.querySelectorAll('[data-nav="members"]').forEach(button=>button.disabled=!canSeeAll);
+    document.querySelectorAll('[data-nav="members"]').forEach(button=>button.disabled=false);
     const selectedMember=$('filter-member').value;
     $('filter-member').innerHTML='<option value="">'+(canSeeAll?'全部成员':'我的记录')+'</option>'+state.members.map(m=>`<option value="${L.escape(m.id)}">${L.escape(m.name)}</option>`).join('');
     if(state.members.some(m=>m.id===selectedMember))$('filter-member').value=selectedMember;
     $('filter-member').disabled=!canSeeAll;
     $('visibility-hint').textContent=p&&!canSeeAll?'本期只展示自己的明细；上方“本期全员总消费”仍包含所有成员。':'';
-    $('today-label').textContent=today()+' · 马来西亚时间';updatePermissions();renderRecords();
+    $('today-label').textContent=today()+' · 马来西亚时间';updatePermissions();renderRecords();window.Family?.load(state);
   }
   function validate(data){return !!data?.me&&['admin','member'].includes(data.me.role)&&Array.isArray(data.periods)&&Array.isArray(data.entries)&&data.entries.every(e=>L.validEntry(e)&&typeof e.userId==='string'&&typeof e.memberName==='string'&&Number.isInteger(e.version))&&Array.isArray(data.members)&&Number.isSafeInteger(data.summary?.totalCents)&&/^\d{4}-\d{2}-\d{2}$/.test(data.today);}
   function load(data){
@@ -141,15 +127,15 @@
     const button=event.target.closest('button');if(!button||saving||!state)return;button.closest('details')?.removeAttribute('open');
     const e=state.entries.find(row=>row.id===(button.dataset.edit||button.dataset.delete));
     if(!e||!L.canEdit(e,state.me,period(),today()))return;
-    if(button.dataset.delete){if(confirm(`删除 ${e.memberName} 的「${e.title}」？`)&&await mutate('delete_shared_expense',{p_period_id:period().id,p_entry_id:e.id,p_expected_version:e.version})){if(editing?.id===e.id)resetForm();render();toast('消费已删除');}return;}
-    if(dirty&&!confirm('放弃当前未保存内容，编辑这笔消费？'))return;
+    if(button.dataset.delete){if(window.I18n.confirm(`删除 ${e.memberName} 的「${e.title}」？`)&&await mutate('delete_shared_expense',{p_period_id:period().id,p_entry_id:e.id,p_expected_version:e.version})){if(editing?.id===e.id)resetForm();render();toast('消费已删除');}return;}
+    if(dirty&&!window.I18n.confirm('放弃当前未保存内容，编辑这笔消费？'))return;
     editing={...e};dirty=false;['title','date','time','category','note'].forEach(key=>$(key).value=e[key]);$('amount').value=(e.cents/100).toFixed(2);
     $('form-title').textContent='编辑 '+e.memberName+' 的消费';$('save-btn').textContent='保存修改';$('cancel-edit').classList.remove('hidden');$('note-options').open=!!e.note;updateCategories();updatePermissions();openEntry();
   };
   $('period-tabs').onclick=event=>{const button=event.target.closest('[data-period]');if(!button)return;range=button.dataset.period;document.querySelectorAll('[data-period]').forEach(b=>b.classList.toggle('active',b===button));$('custom-range').classList.toggle('hidden',range!=='custom');renderRecords();};
   ['start','end','search','filter-category','filter-member'].forEach(id=>$(id).addEventListener('input',renderRecords));
   $('period-select').onchange=async()=>{
-    if((dirty||editing)&&!confirm('切换周期会清除未保存的表单，继续？')){$('period-select').value=state.selectedPeriod;return;}
+    if((dirty||editing)&&!window.I18n.confirm('切换周期会清除未保存的表单，继续？')){$('period-select').value=state.selectedPeriod;return;}
     const id=$('period-select').value;$('period-select').disabled=true;
     try{await cloud.selectPeriod(id);}catch(error){toast(error.message);render();}finally{$('period-select').disabled=false;}
   };
@@ -164,10 +150,10 @@
     const key=JSON.stringify(args);if(!periodDraft||periodDraft.key!==key)periodDraft={key,id:crypto.randomUUID()};
     if(await mutate('create_ledger_period',{...args,p_id:periodDraft.id})){periodDraft=null;$('period-form').reset();seedPeriod();$('admin-panel').open=false;toast('新周期已创建，所有成员都能看到。');}
   };
-  $('close-period').onclick=async()=>{const p=period();if(!p||!isAdmin()||!confirm(`结束「${p.title}」？所有人将无法再添加、修改或删除本期消费，历史记录仍可查看。`))return;if(await mutate('close_ledger_period',{p_period_id:p.id})){resetForm();render();toast('周期已结束，历史记录已保留。');}};
+  $('close-period').onclick=async()=>{const p=period();if(!p||!isAdmin()||!window.I18n.confirm(`结束「${p.title}」？所有人将无法再添加、修改或删除本期消费，历史记录仍可查看。`))return;if(await mutate('close_ledger_period',{p_period_id:p.id})){resetForm();render();toast('周期已结束，历史记录已保留。');}};
   function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  $('backup').onclick=()=>{if(!state)return;download('日日记-团队周期-'+today()+'.json',JSON.stringify({format:'shared-ledger-export-v2',exportedAt:new Date().toISOString(),period:period(),summary:state.summary,entries:state.entries,members:state.members},null,2),'application/json');};
-  $('export-csv').onclick=()=>{const cell=value=>'"'+String(value).replace(/^[=+@\-\t\r]/,"'$&").replaceAll('"','""')+'"';const data=[['周期','成员','日期','时间','内容','分类','金额 MYR','备注'],...rows().map(e=>[period()?.title||'',e.memberName,e.date,e.time,e.title,e.category,(e.cents/100).toFixed(2),e.note])];download('日日记-团队消费-'+today()+'.csv','\ufeff'+data.map(row=>row.map(cell).join(',')).join('\r\n'),'text/csv;charset=utf-8');};
+  $('backup').onclick=()=>{if(!state)return;download('罗家记-团队周期-'+today()+'.json',JSON.stringify({format:'shared-ledger-export-v2',exportedAt:new Date().toISOString(),period:period(),summary:state.summary,entries:state.entries,members:state.members},null,2),'application/json');};
+  $('export-csv').onclick=()=>{const cell=value=>'"'+String(value).replace(/^[=+@\-\t\r]/,"'$&").replaceAll('"','""')+'"';const data=[['周期','成员','日期','时间','内容','分类','金额 MYR','备注'],...rows().map(e=>[period()?.title||'',e.memberName,e.date,e.time,e.title,e.category,(e.cents/100).toFixed(2),e.note])];download('罗家记-团队消费-'+today()+'.csv','\ufeff'+data.map(row=>row.map(cell).join(',')).join('\r\n'),'text/csv;charset=utf-8');};
   window.addEventListener('beforeunload',event=>{if(dirty||saving){event.preventDefault();event.returnValue='';}});
   document.querySelectorAll('[data-open-entry]').forEach(button=>button.onclick=openEntry);
   $('entry-close').onclick=()=>{if(!saving)closeEntry();};
@@ -195,14 +181,14 @@
   document.querySelectorAll('[data-nav]').forEach(button=>button.onclick=()=>{
     const target=button.dataset.nav;
     if(target==='account'){openAccount();return;}
-    closeAccount();const id={overview:'overview',records:'records-panel',members:'member-summary'}[target];
-    document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});
+    closeAccount();window.Family.navigate(target);
     document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===target));
   });
   let navFrame=null;window.addEventListener('scroll',()=>{if(navFrame)return;navFrame=requestAnimationFrame(()=>{navFrame=null;syncNavigation();});},{passive:true});
+  window.addEventListener('languagechange',render);
   mountEntry();resetForm();seedPeriod();$('today-label').textContent=today()+' · 马来西亚时间';
   cloud.init({validate,load,canRefresh:()=>!saving,clear:()=>{
-    state=null;closeEntry();closeAccount();document.body.classList.remove('signed-in');clearTimeout(toastTimer);$('toast').classList.add('hidden');$('record-list').innerHTML='';$('members').innerHTML='';
+    state=null;window.Family?.clear();closeEntry();closeAccount();document.body.classList.remove('signed-in');clearTimeout(toastTimer);$('toast').classList.add('hidden');$('record-list').innerHTML='';$('members').innerHTML='';
     $('admin-panel').classList.add('hidden');$('period-form').reset();periodDraft=null;resetForm();seedPeriod();
     $('record-filters').classList.remove('expanded');$('filters-toggle').setAttribute('aria-expanded','false');$('total').textContent='RM 0.00';$('my-total').textContent='RM 0.00';$('contributors').textContent='0 人';
   }});

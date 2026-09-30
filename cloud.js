@@ -9,6 +9,9 @@
   const status = text => { $('sync-status').textContent = text; };
   function errorText(error) {
     const messages = {
+      INVALID_PROFILE: '昵称或头像无效，请检查后重试。',
+      ADMIN_PROTECTED: '不能修改管理员账号。',
+      MEMBER_NOT_FOUND: '找不到该会员，请重新同步。',
       MEMBER_REQUIRED: '账号尚未加入团队或已停用，请联系管理员。',
       ADMIN_REQUIRED: '只有管理员可以操作记账周期。',
       PERIOD_LOCKED: '该周期尚未开始、已到期或已关闭，不能再修改消费。',
@@ -48,7 +51,7 @@
   function accept(data) {
     if (!ui.validate(data)) throw Error('invalid shared_ledger');
     selectedPeriod = data.selectedPeriod;
-    ui.load(data); ready = true;
+    ready = true; ui.load(data);
     $('workspace').classList.remove('hidden');
     $('team-panel').classList.remove('hidden');
   }
@@ -170,5 +173,22 @@
     } catch { message('修改密码失败。请重新登录后重试，并确认新密码满足项目的密码规则。'); }
     finally { $('update-password-btn').disabled = false; }
   };
-  window.ledgerCloud = { init, run, selectPeriod };
+  async function request(name,args={}) {
+    if(!user||!ready)throw Error('请先登录并读取团队账本。');
+    const current=generation;
+    const {data,error}=await client.rpc(name,args);
+    if(current!==generation)throw Error('账号已切换，请检查当前账号。');
+    if(error)throw Error(error.code==='PGRST202'?'请先执行 upgrade-v3.sql，启用会员与个人资料功能。':errorText(error));
+    return data;
+  }
+  async function manageAccount(body){
+    if(!user||!ready)throw Error('请先登录并读取团队账本。');
+    const {data,error}=await client.functions.invoke('manage-members',{body});
+    if(error){let code='';try{code=(await error.context.json()).error;}catch{}
+      const messages={EMAIL_EXISTS:'该邮箱已经有账号，请在会员列表中查找。',CREATE_FAILED:'无法创建账号，请检查邮箱是否已使用及密码规则。',INVALID_PASSWORD:'密码必须为 12 至 128 位。',ADMIN_REQUIRED:'只有管理员可以管理会员。',ADMIN_PROTECTED:'不能修改管理员账号。',RESET_FAILED:'重设密码失败，请重试。'};
+      throw Error(messages[code]||'会员账号服务暂不可用，请确认已部署 manage-members，再重试。');
+    }
+    return data;
+  }
+  window.ledgerCloud = { init, run, selectPeriod, request, manageAccount, refresh };
 })();
