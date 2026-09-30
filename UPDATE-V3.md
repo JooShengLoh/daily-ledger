@@ -1,3 +1,5 @@
+> 最新版 v3.6.0：以 FINAL-UPDATE.md 为准。首页按选中的周期统计，已关闭周期仍显示金额。密码无网站自定的 12 位限制，需更新 manage-members 函数；实际密码规则由 Supabase Auth 决定。
+
 > v3.5.0 已支持彻底删除任何周期及全部消费。请使用 FINAL-UPDATE.md 与最新版 upgrade-final.sql，旧版“只删空周期”说明不再适用。
 
 > 此文档描述早期更新。现在请使用 [FINAL-UPDATE.md](FINAL-UPDATE.md) 与 upgrade-final.sql 一次完成升级，不要只执行本文旧脚本后使用最新网站。

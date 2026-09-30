@@ -20,10 +20,6 @@
   }
   async function openEntry(){
     if(!state)return;
-    if(document.body.dataset.page==='overview'&&state.dashboard.periodId&&state.selectedPeriod!==state.dashboard.periodId){
-      if((dirty||editing)&&!window.I18n.confirm('切换周期会清除未保存的表单，继续？'))return;
-      try{await cloud.selectPeriod(state.dashboard.periodId);}catch(error){toast(error.message);return;}
-    }
     closeAccount();
     if(true){
       if(!$('entry-dialog').open)$('entry-dialog').showModal();
@@ -91,9 +87,9 @@
     $('period-rules').textContent=p?`${p.allowBackdate?'可补记周期内已经过去的日期':'会员只可记录当天消费'} · ${p.showDetails?'全员可看全部明细':'会员只看总额与自己的明细'} · 到期后锁定`:'历史周期和总消费会保留。';
     $('close-period').classList.toggle('hidden',!isAdmin()||!p||p.closed||p.status==='ended');
     $('delete-period').classList.toggle('hidden',!isAdmin()||!p);
-    const dashboard=state.dashboard;
+    const dashboard={periodId:p?.id,title:p?.title,summary:state.summary};
     $('total').textContent=L.money(dashboard.summary.totalCents);$('my-total').textContent=L.money(dashboard.summary.myCents);
-    $('dashboard-period').textContent=dashboard.periodId?dashboard.title:window.I18n.t('目前没有进行中的周期');
+    $('dashboard-period').textContent=dashboard.periodId?dashboard.title:window.I18n.t('暂无记账周期');
     $('history-total').textContent=L.money(state.summary.totalCents);
     $('history-mine').textContent=L.money(state.summary.myCents);
     $('history-count').textContent=state.summary.count;
@@ -110,7 +106,7 @@
     $('visibility-hint').textContent=p&&!canSeeAll?'本期只展示自己的明细；所选周期总额仍包含所有成员。':'';
     $('today-label').textContent=today()+' · 马来西亚时间';updatePermissions();renderRecords();window.Family?.load(state);
   }
-  function validate(data){return !!data?.me&&Number.isSafeInteger(data.dashboard?.summary?.totalCents)&&['admin','member'].includes(data.me.role)&&Array.isArray(data.periods)&&Array.isArray(data.entries)&&data.entries.every(e=>L.validEntry(e)&&typeof e.userId==='string'&&typeof e.memberName==='string'&&Number.isInteger(e.version))&&Array.isArray(data.members)&&Number.isSafeInteger(data.summary?.totalCents)&&/^\d{4}-\d{2}-\d{2}$/.test(data.today);}
+  function validate(data){return !!data?.me&&['admin','member'].includes(data.me.role)&&Array.isArray(data.periods)&&Array.isArray(data.entries)&&data.entries.every(e=>L.validEntry(e)&&typeof e.userId==='string'&&typeof e.memberName==='string'&&Number.isInteger(e.version))&&Array.isArray(data.members)&&Number.isSafeInteger(data.summary?.totalCents)&&/^\d{4}-\d{2}-\d{2}$/.test(data.today);}
   function load(data){
     const changed=!state||state.selectedPeriod!==data.selectedPeriod;state=data;document.body.classList.add('signed-in');
     if(changed){resetForm();range='all';$('search').value='';$('filter-member').value='';$('filter-category').value='';$('custom-range').classList.add('hidden');document.querySelectorAll('[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period==='all'));$('start').value=(period()?.startDate||today())+'T00:00';$('end').value=(period()?.endDate||today())+'T23:59';}

@@ -172,7 +172,7 @@
   $('change-password-form').onsubmit = async event => {
     event.preventDefault();
     const password = $('new-password').value;
-    if (password.length < 12 || password !== $('confirm-password').value) { message('新密码至少 12 位，两次输入必须相同。'); return; }
+    if (password.length === 0 || password !== $('confirm-password').value) { message('密码不能为空，两次输入必须相同。'); return; }
     $('update-password-btn').disabled = true;
     try {
       const { error } = await client.auth.updateUser({ password });
@@ -194,7 +194,7 @@
     if(!user||!ready)throw Error('请先登录并读取团队账本。');
     const {data,error}=await client.functions.invoke('manage-members',{body});
     if(error){let code='';try{code=(await error.context.json()).error;}catch{}
-      const messages={EMAIL_EXISTS:'该邮箱已经有账号，请在会员列表中查找。',CREATE_FAILED:'无法创建账号，请检查邮箱是否已使用及密码规则。',INVALID_PASSWORD:'密码必须为 12 至 128 位。',ADMIN_REQUIRED:'只有管理员可以管理会员。',ADMIN_PROTECTED:'不能修改管理员账号。',RESET_FAILED:'重设密码失败，请重试。'};
+      const messages={PASSWORD_POLICY:'密码不符合 Supabase 项目的规则，请检查后台密码设置。',EMAIL_EXISTS:'该邮箱已经有账号，请在会员列表中查找。',CREATE_FAILED:'无法创建账号，请检查邮箱是否已使用及密码规则。',INVALID_PASSWORD:'密码不能为空。',ADMIN_REQUIRED:'只有管理员可以管理会员。',ADMIN_PROTECTED:'不能修改管理员账号。',RESET_FAILED:'重设密码失败，请重试。'};
       throw Error(messages[code]||'会员账号服务暂不可用，请确认已部署 manage-members，再重试。');
     }
     return data;

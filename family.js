@@ -29,7 +29,7 @@
     if(me){
       $('account-trigger').innerHTML=avatar(me);$('account-heading').textContent=me.name;
       if(!profileDirty){photo=me.avatar||'';$('profile-name').value=me.name;$('profile-preview').innerHTML=avatar(me);}
-      $('hero-avatars').innerHTML=people.filter(p=>state.selectedPeriod===state.dashboard?.periodId&&p.count>0).slice(0,3).map(p=>`<span>${avatar(p)}</span>`).join('');
+      $('hero-avatars').innerHTML=people.filter(p=>p.count>0).slice(0,3).map(p=>`<span>${avatar(p)}</span>`).join('');
     }
   }
   async function load(data){
@@ -76,7 +76,7 @@
     $('member-dialog-title').textContent=t(action==='create'?'新增会员':'管理会员');
     $('member-name').value=person?.name||'';$('member-email').value=person?.email||'';
     $('member-email').disabled=action!=='create';$('member-password').required=action==='create';
-    $('member-password-label').firstChild.textContent=t(action==='create'?'初始密码（至少 12 位）':'重设密码（选填，至少 12 位）');
+    $('member-password-label').firstChild.textContent=t(action==='create'?'初始密码':'重设密码（选填）');
     feedback('member-help',action==='create'?'创建后即可使用邮箱和初始密码登录。请私下交给本人。':'可修改昵称或设置新密码。历史消费会继续保留。');
     $('member-dialog').showModal();
   }
